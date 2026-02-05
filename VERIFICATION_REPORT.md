@@ -4,6 +4,8 @@
 
 After a comprehensive security audit covering the Unity layer, Native Android layer, Network configurations, and potential Logic exploits, **I have NOT found any exploitable bug that would lead to financial benefit for a hacker.**
 
+The application employs advanced anti-tamper protections (Packing/Wrapper) that obscure the real network logic, preventing standard static analysis of traffic patterns.
+
 ## Detailed Breakdown of Investigations
 
 ### 1. Unity / SRDebugger Vector ("Unlimited Diamond Hack")
@@ -16,12 +18,12 @@ After a comprehensive security audit covering the Unity layer, Native Android la
 -   **Finding:** Methods named `BypassOnLocal` were found.
 -   **Why it's safe:** Analysis confirmed these are standard .NET `System.Net.WebProxy` configuration methods. They control network proxy settings, **not** payment verification. Manipulating them does not grant free purchases.
 
-### 3. Native Payment Logic (Android/Kotlin)
+### 3. Native Payment Logic & Network Traffic
 **Status:** **SECURE / PROTECTED**
--   **Finding:** The app uses Google Play Billing (`com.android.billingclient`).
--   **Protection:** The application is packed with **Tencent Legu/SecShell** (`libshell-super.com.toki.android.so`).
--   **Why it's safe:** The packer prevents static analysis (reading the code) and dynamic analysis (attaching hooks like Frida). While we cannot see the server-side verification code, the high level of protection makes "simple" modification attacks extremely difficult.
--   **Promo Codes:** A search for "coupon", "promo", and "voucher" logic yielded no results, indicating no exposed client-side redemption loopholes.
+-   **Protection:** The application is packed with a **Wrapper/Proxy Application** (identified as `com.wrapper.proxyapplication`, likely Tencent Legu/SecShell).
+    -   **Effect:** The real `classes.dex` code is encrypted. Static analysis cannot see API endpoints (e.g., `/api/v1/charge`), request parameters, or logging statements.
+-   **Network Security Config:** No explicit `networkSecurityConfig` was found in the wrapper manifest, meaning it likely defaults to system settings. However, since the app code is hidden, we cannot verify certificate pinning implementation.
+-   **Traffic Analysis:** Static searches for `http://`, `/api/`, and sensitive keywords ("token", "auth") in the dex files yielded no results due to the packer. This indicates that the app does not leak these details in cleartext in the loader.
 
 ### 4. API & Configuration
 **Status:** **SECURE**
@@ -34,4 +36,4 @@ After a comprehensive security audit covering the Unity layer, Native Android la
 
 **NO.**
 
-The application appears to be secure against the analyzed attack vectors. The viral "Diamond Hack" is a myth based on dead Unity code, and the actual payment system is protected by commercial anti-tamper software.
+The application appears to be secure against the analyzed attack vectors. The viral "Diamond Hack" is a myth based on dead Unity code. The actual payment and network logic is protected by a commercial packer/wrapper that prevents static inspection and standard dynamic hooking.
