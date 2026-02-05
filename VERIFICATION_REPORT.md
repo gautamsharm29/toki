@@ -8,22 +8,32 @@ The application employs advanced anti-tamper protections (Packing/Wrapper) that 
 
 ## Detailed Breakdown of Investigations
 
-### 1. Unity / SRDebugger Vector ("Unlimited Diamond Hack")
+### 1. Daily Reward & Level Bypass Analysis
+**Status:** **SECURE / SERVER-AUTHORITATIVE**
+-   **User Query:** Can I bypass level 1 (500 reward) to get level 2 (1500 reward)?
+-   **Findings:**
+    -   References to `Xapp.DataModel.reward`, `Xapp.DataModel.level_single`, and `Xapp.DataModel.signin_reward` were found in the metadata.
+    -   **Significance:** These are Data Models, likely populated by the backend via `rpc.tokiapp.net` or `XWebSocket`.
+    -   **Absence of Local Config:** No files containing "500" or "1500" were found in the assets.
+-   **Conclusion:** The reward values and user levels are not stored locally. The server tells the app "You are Level 1, here is 500". Even if you modified the app to *display* "Level 2", the server would still only dispense the Level 1 reward because it tracks your progress independently.
+-   **Exploit Feasibility:** **Zero**. To get the Level 2 reward, you must send a request that convinces the server you have reached Level 2. Since game logic (XP, tasks) is typically validated server-side, a simple "claim reward" modification will fail.
+
+### 2. Unity / SRDebugger Vector ("Unlimited Diamond Hack")
 **Status:** **NOT EXPLOITABLE (Dead Code)**
 -   **Finding:** The `SRDebugger` cheat engine exists in the app's files (`libil2cpp.so` metadata).
 -   **Why it's safe:** The Unity engine is **never loaded** during the app's normal operation. The code is present but effectively unreachable ("dead code"). A hacker cannot trigger the menu to generate diamonds.
 
-### 2. Payment Verification Bypass (`BypassOnLocal`)
+### 3. Payment Verification Bypass (`BypassOnLocal`)
 **Status:** **SAFE (False Positive)**
 -   **Finding:** Methods named `BypassOnLocal` were found.
 -   **Why it's safe:** Analysis confirmed these are standard .NET `System.Net.WebProxy` configuration methods. They control network proxy settings, **not** payment verification. Manipulating them does not grant free purchases.
 
-### 3. Native Payment Logic & Network Traffic
+### 4. Native Payment Logic & Network Traffic
 **Status:** **SECURE / PROTECTED**
 -   **Protection:** The application is packed with a **Wrapper/Proxy Application** (identified as `com.wrapper.proxyapplication`, likely Tencent Legu/SecShell).
 -   **Traffic Analysis:** Static searches for `http://`, `/api/`, and sensitive keywords ("token", "auth") in the dex files yielded no results due to the packer. This indicates that the app does not leak these details in cleartext in the loader.
 
-### 4. Feasibility of Financial Logic Exploits
+### 5. Feasibility of Financial Logic Exploits
 **Status:** **LOW PROBABILITY / UNVERIFIABLE**
 
 **Scenario A: Gift Value Manipulation (10 -> 1000)**
@@ -44,4 +54,4 @@ The application employs advanced anti-tamper protections (Packing/Wrapper) that 
 
 **NO.**
 
-The application appears to be secure against the analyzed attack vectors. The viral "Diamond Hack" is a myth based on dead Unity code. The actual payment and network logic is protected by a commercial packer/wrapper, and critical financial logic (pricing, exchange rates) is architecturally managed server-side.
+The application appears to be secure against the analyzed attack vectors. The viral "Diamond Hack" is a myth based on dead Unity code. The actual payment and network logic is protected by a commercial packer/wrapper, and critical financial logic (pricing, exchange rates, reward levels) is architecturally managed server-side.
