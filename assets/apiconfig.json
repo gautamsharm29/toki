@@ -1,0 +1,22 @@
+{
+  "rpc": {
+    "ip": "rpc.tokiapp.net",
+    "port": "443"
+  },
+  "image_origin": "https://oss-image.tokiapp.net/",
+  "official_url": "https://www.tokiapp.net",
+  "privacy": "https://www.tokiapp.net/privacy.html",
+  "terms": "https://www.tokiapp.net/terms.html",
+  "platform": "https://www.tokiapp.net/platform-guidelines.html",
+  "children_policy":"https://www.tokiapp.net/child_safety_policy.html",
+  "sso": [
+    {
+      "ip": "sso.tokiapp.net",
+      "port": "80"
+    },
+    {
+      "ip": "sso.tokiapp.net",
+      "port": "443"
+    }
+  ]
+}
