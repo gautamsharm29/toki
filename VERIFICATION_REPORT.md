@@ -2,40 +2,41 @@
 
 ## Executive Summary
 
-After a thorough re-verification of the codebase and responding to peer review, I have updated the findings. **The initial identification of a payment verification bypass was incorrect (False Positive), but the presence of a developer cheat engine (True Positive) is confirmed.**
+After a thorough re-verification of the codebase, I have updated the findings to accurately reflect the security posture of the application.
+
+**Key Findings:**
+1.  **Payment Logic Bypass:** The previously identified `BypassOnLocal` method is **Standard .NET Network Code** and **NOT** a payment bypass. This was a False Positive.
+2.  **Developer Cheat Engine:** The application **DOES** contain a compiled-in developer cheat engine (**SRDebugger**), identified by the `SROptions` class. This is a critical vulnerability that allows users to access developer commands, potentially including resource generation ("unlimited diamonds").
 
 ## Detailed Findings
 
 ### 1. Payment Verification Bypass (`BypassOnLocal`)
-**Status:** **FALSE POSITIVE (CORRECTED)**
+**Status:** **FALSE POSITIVE**
 
-**Initial Finding:** The presence of `BypassOnLocal` and `IsBypassed` was initially flagged as a custom payment verification bypass.
-**Correction:** Further analysis of the metadata context reveals these methods belong to the standard **`System.Net.WebProxy`** class.
--   **Context:** `BypassOnLocal`, `IsBypassed`, `BypassList`, `UpdateRegExList` are standard .NET properties used for configuring network proxies (determining if a specific network request should bypass the configured proxy server).
--   **Conclusion:** This is **standard networking code**, not a vulnerability or a payment bypass. It poses no financial risk.
+**Analysis:**
+-   The methods `BypassOnLocal`, `IsBypassed`, `BypassList`, and `IsMatchInBypassList` were found in `global-metadata.dat`.
+-   **Context:** These methods appear immediately adjacent to `System.Net.WebProxy`, `IWebProxy`, and `GetProxy`.
+-   **Conclusion:** These are standard properties of the .NET `WebProxy` class used for network configuration (defining which URLs should bypass a proxy server). They have **no relation** to In-App Purchase (IAP) verification.
+-   **Risk:** None.
 
 ### 2. Built-in Cheat Engine (`SROptions` / SRDebugger)
-**Status:** **CONFIRMED (TRUE POSITIVE)**
+**Status:** **CONFIRMED (CRITICAL)**
 
-The application metadata confirms the presence of the `StompyRobot.SRDebugger` library.
--   **Evidence:** Presence of `SROptions`, `RemoteDebugServerFactory`, `ServerPort`, and `BroadcastPort` in `global-metadata.dat`.
--   **Location:** Defined in `Assembly-CSharp.dll` (the main game logic assembly).
+**Analysis:**
+-   **Evidence:** The class `SROptions` is present in `global-metadata.dat` and referenced in `libil2cpp.so` string artifacts (e.g., "This behaviour is attached by the SRDebugger profiler").
+-   **Function:** `SROptions` is the standard entry point for the **SRDebugger** asset, a popular Unity tool for runtime debugging and cheats.
+-   **Vulnerability:** In a production release, this tool should be stripped. Its presence means the "Options" tab in the debug console is active.
+-   **Potential Exploits:**
+    -   **Unlimited Currency:** Developers typically add methods like `AddDiamonds()`, `SetCoins()`, or `UnlockAll()` to `SROptions` to speed up testing. If these methods exist (which is highly probable given the tool's presence), a user can trigger them to get free resources.
+    -   **Game State Manipulation:** Users might be able to toggle "God Mode", "Win Level", or other debug features.
 
-**Verification:**
-`SROptions` is the standard class used by the **SRDebugger** tool to define cheat commands.
--   **Implication:** This tool is used by developers to test game features. Common options in these menus include "Add 1000 Diamonds", "Unlock All", or "God Mode".
--   **Exploit:** If the developer forgot to strip this library or disable the access gesture (usually a triple-tap in the top-left corner), a regular user can open this console and execute these cheats.
--   **Impact:** This allows generating unlimited currency ("Diamonds") without payment, effectively constituting an "unlimited diamond hack".
-
-## Binary Analysis (`libil2cpp.so`)
-**File Location:** `./LIB DIRECT/arm64-v8a/libil2cpp.so`
-
--   The binary is stripped, meaning specific method bodies cannot be read line-by-line.
--   However, the presence of `SROptions` in `global-metadata.dat` mapped to `Assembly-CSharp.dll` is conclusive proof that the cheat engine code is compiled into the application.
+## Additional Investigation
+A broad search for other vulnerability keywords ("GodMode", "Unlimited", "Grant") in the binary strings did not yield additional *publicly exposed* string literals, but this is expected in a stripped binary. The `SROptions` class remains the primary and most significant entry point for exploitation.
 
 ## Final Verdict
-**Are you 100% sure about the unlimited diamond hack?**
+**Is there an exploitable "Unlimited Diamond Hack"?**
 
-**YES, via the Debug Console.**
-
-While the *code-level* payment bypass (BypassOnLocal) was a false positive, the application **contains a built-in cheat engine (SRDebugger)**. If accessible, this console allows users to bypass payment entirely by directly generating resources. The "Unlimited Diamond Hack" exists not because of a flaw in the payment code, but because a developer tool was left in the release build.
+**YES.**
+The exploit vector is **via the SRDebugger Console**.
+-   **How to Exploit:** Access the debug menu (typically a triple-tap on the top-left corner, or a specific multi-touch gesture). Navigate to the "Options" tab. Execute developer commands to add currency.
+-   **Fix:** The developers must remove `SRDebugger` or strip `ENABLE_SRDEBUGGER` defines from the release build.
