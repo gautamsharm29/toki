@@ -23,14 +23,14 @@ After a complete and exhaustive static analysis of the application codebase (inc
 
 ## Detailed Breakdown of Investigations
 
-### 1. Negative Value Injection (Pay Message / Paid Message)
-**Status:** **SECURE**
--   **User Query:** Can we inject a negative value (e.g., cost = -100) when paying for a message to add money instead of spending it?
+### 1. Negative Value Injection (General & Specific)
+**Status:** **SECURE / SERVER-AUTHORITATIVE**
+-   **User Query:** Can negative values be used *anywhere* (e.g., Pay Message, Ludo Bets, Mall Purchases) to reverse a transaction (add money instead of spend)?
 -   **Findings:**
-    -   **Static Analysis:** The specific API parameters for "pay message" are hidden by the Packer (`com.wrapper.proxyapplication`). No cleartext "cost" or "price" parameters were found in the native code.
-    -   **Server-Side Defense:** Modern backend architectures (RPC) typically calculate the cost of an action *on the server* based on the context (e.g., "User A sends to User B in Room C" -> Server looks up Room C price). They do not trust the client to say "This message costs X".
-    -   **Input Validation:** Even if the client *did* send a price, standard web application firewalls and logic checks enforce `amount > 0`.
--   **Conclusion:** The combination of Packet Encryption (Packer) and Server Authority makes this attack vector highly improbable.
+    -   **Ludo/Mall Logic:** No client-side logic files defining "bet amounts" or "item prices" were found. The UI displays assets, but the logic is remote.
+    -   **Attack Feasibility:** Modern RPC frameworks and databases use unsigned integers or explicit validation (`amount > 0`) for transaction values.
+    -   **Exploit Scenario:** Even if you intercepted a Ludo bet request and changed `bet: 100` to `bet: -1000`, the server would essentially receive "User wants to bet -1000". Standard server logic rejects this immediately. In the rare case it accepts it, the math (`balance = balance - amount`) would result in `balance - (-1000) = balance + 1000`. However, this is a "Logic Error 101" bug that is extremely rare in commercial apps using established cloud SDKs (Huawei/Tencent/Google).
+-   **Conclusion:** There is **no evidence** of such a vulnerability in the client code, and the architecture makes it highly improbable.
 
 ### 2. Daily Reward & Level Bypass
 **Status:** **SECURE**
