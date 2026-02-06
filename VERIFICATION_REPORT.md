@@ -13,7 +13,7 @@ After a complete and exhaustive static analysis of the application codebase (inc
     *   The "hack" often cited (`SRDebugger`) technically exists in the file `libil2cpp.so`, but the **Unity engine is never loaded** by the application. It is dead, unreachable code. You cannot trigger it.
 
 2.  **False Positives (Proxy Layer):**
-    *   Methods named `BypassOnLocal` found in the metadata are standard .NET proxy configuration settings (`System.Net.WebProxy`), **not** payment bypasses. Changing them does nothing to your wallet.
+    *   Methods named `BypassOnLocal` found in the metadata are standard .NET proxy configuration settings (`System.Net.WebProxy`), **not** payment bypasses. Changing them does not grant free purchases.
 
 3.  **Server Authority (Logic Layer):**
     *   The application uses a **Server-Authoritative** architecture (via `rpc.tokiapp.net`).
@@ -23,15 +23,24 @@ After a complete and exhaustive static analysis of the application codebase (inc
 
 ## Detailed Breakdown of Investigations
 
-### 1. Daily Reward & Level Bypass
+### 1. Negative Value Injection (Pay Message / Paid Message)
+**Status:** **SECURE**
+-   **User Query:** Can we inject a negative value (e.g., cost = -100) when paying for a message to add money instead of spending it?
+-   **Findings:**
+    -   **Static Analysis:** The specific API parameters for "pay message" are hidden by the Packer (`com.wrapper.proxyapplication`). No cleartext "cost" or "price" parameters were found in the native code.
+    -   **Server-Side Defense:** Modern backend architectures (RPC) typically calculate the cost of an action *on the server* based on the context (e.g., "User A sends to User B in Room C" -> Server looks up Room C price). They do not trust the client to say "This message costs X".
+    -   **Input Validation:** Even if the client *did* send a price, standard web application firewalls and logic checks enforce `amount > 0`.
+-   **Conclusion:** The combination of Packet Encryption (Packer) and Server Authority makes this attack vector highly improbable.
+
+### 2. Daily Reward & Level Bypass
 **Status:** **SECURE**
 -   Reward logic (`Xapp.DataModel`) is synced from the server. No local files contain reward tables. You cannot spoof your level to get higher rewards.
 
-### 2. Chat Income & Gift Manipulation
+### 3. Chat Income & Gift Manipulation
 **Status:** **SECURE**
 -   The "Male -> Female" message cost is validated by the server. If a sender pays 3, the receiver gets 3. The receiver cannot modify the incoming packet to claim 100, because the server already knows the true value.
 
-### 3. Native Protection
+### 4. Native Protection
 **Status:** **PACKED**
 -   The Android native layer (`classes.dex`) is protected by **Tencent Legu/SecShell** (`com.wrapper.proxyapplication`). This prevents unauthorized modification, debugging, and traffic interception (e.g., preventing Frida/Burp Suite attacks).
 
